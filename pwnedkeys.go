@@ -19,10 +19,15 @@ import (
 )
 
 var (
+	// ErrKeyFound is returned when the key was found in pwnedkeys.com database
 	ErrKeyFound   = errors.New("private key found in pwnedkeys.com database")
+
+	// ErrHashFailed is returned only when the SHA-256 hashing fails.
 	ErrHashFailed = errors.New("unable to generate SHA-256 hash")
 )
 
+// CheckCertificate returns a non-nil error only if the key information is found in the pwnedkeys.com database.
+// Finding key data implies a compromised key.
 func CheckCertificate(client *http.Client, cert *x509.Certificate) error {
 	return check(client, cert.RawSubjectPublicKeyInfo)
 }
