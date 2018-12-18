@@ -20,7 +20,7 @@ import (
 
 var (
 	// ErrKeyFound is returned when the key was found in pwnedkeys.com database
-	ErrKeyFound   = errors.New("private key found in pwnedkeys.com database")
+	ErrKeyFound = errors.New("private key found in pwnedkeys.com database")
 
 	// ErrHashFailed is returned only when the SHA-256 hashing fails.
 	ErrHashFailed = errors.New("unable to generate SHA-256 hash")
