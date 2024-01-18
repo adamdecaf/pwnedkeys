@@ -7,8 +7,8 @@ package pwnedkeys
 import (
 	"crypto/x509"
 	"encoding/pem"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -22,7 +22,7 @@ func TestPwnedkeys__found(t *testing.T) {
 	}
 
 	for i := range cases {
-		bs, err := ioutil.ReadFile(cases[i])
+		bs, err := os.ReadFile(cases[i])
 		if err != nil {
 			t.Fatalf("file: %s couldn't be read: %v", cases[i], err)
 		}
