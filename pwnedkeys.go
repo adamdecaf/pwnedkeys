@@ -26,20 +26,25 @@ var (
 	ErrHashFailed = errors.New("unable to generate SHA-256 hash")
 )
 
-// CheckCertificate returns a non-nil error only if the key information is found in the pwnedkeys.com database.
+// CheckCertificate returns a ErrKeyFound if the key information is found in the pwnedkeys.com database.
 // Finding key data implies a compromised key.
 func CheckCertificate(client *http.Client, cert *x509.Certificate) error {
-	return check(client, cert.RawSubjectPublicKeyInfo)
-}
-
-// check makes an HTTP call to the pwnedkeys.com API and returns an error
-// if the key was found. A found key represents a compromised key.
-func check(client *http.Client, bs []byte) error {
-	hash := computeSha256(bs)
+	hash := computeSha256(cert.RawSubjectPublicKeyInfo)
 	if hash == "" {
 		return ErrHashFailed
 	}
+	return check(client, hash)
+}
 
+// CheckCertificate returns a ErrKeyFound if the fingerprint is found in the pwnedkeys.com database.
+// Finding key data implies a compromised key.
+func CheckFingerprint(client *http.Client, fingerprint string) error {
+	return check(client, fingerprint)
+}
+
+// check makes an HTTP call to the pwnedkeys.com API and returns an ErrKeyFound if the key was found
+// or an error for transport/request problems.
+func check(client *http.Client, hash string) error {
 	resp, err := client.Get(fmt.Sprintf("https://v1.pwnedkeys.com/%s", hash))
 	if err != nil {
 		return fmt.Errorf("problem with pwnedkeys.com GET: %v", err)
