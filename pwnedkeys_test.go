@@ -43,18 +43,32 @@ func TestPwnedkeys__CheckCertificate(t *testing.T) {
 }
 
 func TestPwnedKeys__CheckFingerprint(t *testing.T) {
-	// Example fingerprints from https://pwnedkeys.com/search.html
-	cases := []string{
-		"9e03b56749abe821a6f5299d6f634b35404975f0552eb3347bf3adfad9af1109", // 2048 RSA
-		"819f7d1dcd9f07bfcb59b7699f68994d89390c3bcd498cf7fb2e1ef3d272b89b", // P-256 EC
-		"316194405bf1c56c3395c4b6fcf32af83ca0e273fbf0832ef8364069a178ad75", // P-256 EC
-	}
-	for i := range cases {
-		err := CheckFingerprint(http.DefaultClient, cases[i])
-		if !errors.Is(err, ErrKeyFound) {
-			t.Errorf("fingerprint %s was not found in pwnedkeys", cases[i])
+	t.Run("found", func(t *testing.T) {
+		// Example fingerprints from https://pwnedkeys.com/search.html
+		cases := []string{
+			"9e03b56749abe821a6f5299d6f634b35404975f0552eb3347bf3adfad9af1109", // 2048 RSA
+			"819f7d1dcd9f07bfcb59b7699f68994d89390c3bcd498cf7fb2e1ef3d272b89b", // P-256 EC
+			"316194405bf1c56c3395c4b6fcf32af83ca0e273fbf0832ef8364069a178ad75", // P-256 EC
 		}
-	}
+		for i := range cases {
+			err := CheckFingerprint(http.DefaultClient, cases[i])
+			if !errors.Is(err, ErrKeyFound) {
+				t.Errorf("fingerprint %s was not found in pwnedkeys", cases[i])
+			}
+		}
+	})
+
+	t.Run("healthy", func(t *testing.T) {
+		cases := []string{
+			"f17210fac4d24689a4bc87f2a5fb944d13133b450c16478c901ec6e57a5c1e21", // random UUIDs
+		}
+		for i := range cases {
+			err := CheckFingerprint(http.DefaultClient, cases[i])
+			if err != nil {
+				t.Errorf("%s has unexpected error: %v", cases[i], err)
+			}
+		}
+	})
 }
 
 func parsePEM(blob []byte) ([]*x509.Certificate, error) {

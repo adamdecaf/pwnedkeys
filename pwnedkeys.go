@@ -10,9 +10,12 @@
 package pwnedkeys
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -42,17 +45,48 @@ func CheckFingerprint(client *http.Client, fingerprint string) error {
 	return check(client, fingerprint)
 }
 
+type response struct {
+	// Payload is a base64-encoded string which attests that the key has, in fact, been pwned.
+	// The exact contents of the payload are subject to change, it is guaranteed to contain the ASCII string "key is pwned" somewhere.
+	Payload string `json:"payload"`
+}
+
+var (
+	keyIsPwned = []byte("key is pwned")
+)
+
 // check makes an HTTP call to the pwnedkeys.com API and returns an ErrKeyFound if the key was found
 // or an error for transport/request problems.
 func check(client *http.Client, hash string) error {
-	resp, err := client.Get(fmt.Sprintf("https://v1.pwnedkeys.com/%s", hash))
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://v1.pwnedkeys.com/%s", hash), nil)
+	if err != nil {
+		return fmt.Errorf("building pwnedkeys request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("problem with pwnedkeys.com GET: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 200 {
-		// If the response to the request is a 200 OK, then the key appears in the database
+		var wrapper response
+		err = json.NewDecoder(resp.Body).Decode(&wrapper)
+		if err != nil {
+			return fmt.Errorf("problem decoding pwnedkeys JSON response: %w", err)
+		}
+
+		bs, err := base64.URLEncoding.DecodeString(wrapper.Payload)
+		if err != nil {
+			return fmt.Errorf("problem decoding pwnedkeys payload: %w", err)
+		}
+
+		// If the response to the request is a 200 OK, then the key appears in the database,
+		// but verify the payload returned contains what we expect.
+		if !bytes.Contains(bs, keyIsPwned) {
+			return errors.New("pwnedkeys affirmed key is pwned, but response did not confirm")
+		}
 		return ErrKeyFound
 	}
 	if resp.StatusCode == 404 {
